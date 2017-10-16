@@ -55,7 +55,7 @@
 			num_sensor_tx = <15>;
 			pen_enabled = <0>;
 			touch_pressure_enabled = <1>;
-			touch_size_enabled = <0>;
+			touch_size_enabled = <1>;
 			touch_orientation_enabled = <0>;
 			preset_x_max = <1079>;
 			preset_y_max = <1919>;
