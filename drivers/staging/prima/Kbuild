@@ -41,7 +41,7 @@ ifeq ($(KERNEL_BUILD), 0)
 	endif
 
 	#Flag to enable new Linux Regulatory implementation
-	CONFIG_ENABLE_LINUX_REG := y
+	#CONFIG_ENABLE_LINUX_REG := y
 
 endif
 
