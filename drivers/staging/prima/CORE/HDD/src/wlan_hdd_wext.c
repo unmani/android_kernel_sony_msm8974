@@ -3675,8 +3675,15 @@ static int iw_softap_set_channel_range( struct net_device *dev,
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pHostapdAdapter);
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pHostapdAdapter);
 
+    if (!capable(CAP_NET_ADMIN))
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  FL("permission check failed"));
+        return -EPERM;
+    }
 
     status = WLANSAP_SetChannelRange(hHal, startChannel, endChannel, band);
+
     if (VOS_STATUS_SUCCESS != status)
     {
         ret = -EINVAL;
@@ -9700,9 +9707,7 @@ int hdd_setBand(struct net_device *dev, u8 ui_band)
              tANI_U8 curr_country[WNI_CFG_COUNTRY_CODE_LEN];
              curr_country[0]=pMac->scan.countryCodeCurrent[0];
              curr_country[1]=pMac->scan.countryCodeCurrent[1];
-#ifdef CONFIG_ENABLE_LINUX_REG
              INIT_COMPLETION(pHddCtx->linux_reg_req);
-#endif
              /* As currunt band is already set to 2.4Ghz/5Ghz we dont have all channel
               * information available in NV so to get the channel information from kernel
               * we need to send regulatory hint for the currunt country
@@ -9714,11 +9719,10 @@ int hdd_setBand(struct net_device *dev, u8 ui_band)
 #else
              regulatory_hint_user("00");
 #endif
-#ifdef CONFIG_ENABLE_LINUX_REG
              wait_result = wait_for_completion_interruptible_timeout(
                                &pHddCtx->linux_reg_req,
                                msecs_to_jiffies(LINUX_REG_WAIT_TIME));
-#endif
+
              /* if the country information does not exist with the kernel,
                then the driver callback would not be called */
 
@@ -9749,11 +9753,10 @@ int hdd_setBand(struct net_device *dev, u8 ui_band)
 #else
              regulatory_hint_user(curr_country);
 #endif
-#ifdef CONFIG_ENABLE_LINUX_REG
              wait_result = wait_for_completion_interruptible_timeout(
                                &pHddCtx->linux_reg_req,
                                msecs_to_jiffies(LINUX_REG_WAIT_TIME));
-#endif
+
              /* if the country information does not exist with the kernel,
                then the driver callback would not be called */
              if (wait_result >= 0)

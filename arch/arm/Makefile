@@ -53,14 +53,6 @@ endif
 
 comma = ,
 
-#
-# The Scalar Replacement of Aggregates (SRA) optimization pass in GCC 4.9 and
-# later may result in code being generated that handles signed short and signed
-# char struct members incorrectly. So disable it.
-# (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=65932)
-#
-KBUILD_CFLAGS	+= $(call cc-option,-fno-ipa-sra)
-
 # This selects which instruction set is used.
 # Note that GCC does not numerically define an architecture version
 # macro, but instead defines a whole series of macros which makes
@@ -88,7 +80,6 @@ arch-$(CONFIG_CPU_32v3)		:=-D__LINUX_ARM_ARCH__=3 -march=armv3
 # doesn't even support -march=armv7-a, since in that situation we would have
 # bigger problems.
 arch-$(CONFIG_ARCH_MSM_KRAIT)	:=-D__LINUX_ARM_ARCH__=7 $(call cc-option,-mcpu=cortex-a15,-march=armv7-a)
-arch-$(CONFIG_MSM_CORTEX_A7)	:=-D__LINUX_ARM_ARCH__=7 $(call cc-option,-mcpu=cortex-a15,-march=armv7-a)
 
 # This selects how we optimise for the processor.
 tune-$(CONFIG_CPU_ARM610)	:=-mtune=arm610
@@ -274,6 +265,7 @@ core-y				+= arch/arm/kernel/ arch/arm/mm/ arch/arm/common/
 core-y				+= arch/arm/net/
 core-y				+= arch/arm/crypto/
 core-y				+= $(machdirs) $(platdirs)
+core-$(CONFIG_INTELLI_PLUG)	+= arch/arm/hotplug/
 
 drivers-$(CONFIG_OPROFILE)      += arch/arm/oprofile/
 core-y				+= arch/arm/perfmon/

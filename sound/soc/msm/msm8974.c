@@ -349,6 +349,7 @@ static int msm8974_liquid_ext_spk_power_amp_init(void)
 	return 0;
 }
 
+#if !defined(CONFIG_MACH_SONY_SHINANO) && !defined(CONFIG_MACH_SONY_RHINE)
 static void msm8974_liquid_ext_ult_spk_power_amp_enable(u32 on)
 {
 	if (on) {
@@ -370,6 +371,7 @@ static void msm8974_liquid_ext_ult_spk_power_amp_enable(u32 on)
 	pr_debug("%s: %s external ultrasound SPKR_DRV PAs.\n", __func__,
 			on ? "Enable" : "Disable");
 }
+#endif
 
 static void msm8974_liquid_ext_spk_power_amp_enable(u32 on)
 {
@@ -681,7 +683,7 @@ static int msm_ext_spkramp_event(struct snd_soc_dapm_widget *w,
 
 }
 
-#ifndef CONFIG_MACH_SONY_SHINANO
+#if !defined(CONFIG_MACH_SONY_SHINANO) && !defined(CONFIG_MACH_SONY_RHINE)
 static int msm_ext_spkramp_ultrasound_event(struct snd_soc_dapm_widget *w,
 			     struct snd_kcontrol *k, int event)
 {
@@ -2165,10 +2167,10 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.be_id = MSM_FRONTEND_DAI_VOIP,
 	},
 	{
-		.name = "MSM8974 LPA",
-		.stream_name = "LPA",
-		.cpu_dai_name	= "MultiMedia3",
-		.platform_name  = "msm-pcm-lpa",
+		.name = "MSM8974 ULL",
+		.stream_name = "MultiMedia3",
+		.cpu_dai_name = "MultiMedia3",
+		.platform_name = "msm-pcm-dsp.2",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 			SND_SOC_DPCM_TRIGGER_POST},
@@ -2383,7 +2385,7 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.name = "MSM8974 Compr4",
 		.stream_name = "COMPR4",
 		.cpu_dai_name	= "MultiMedia8",
-		.platform_name  = "msm-compr-dsp",
+		.platform_name  = "msm-compress-dsp",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 			 SND_SOC_DPCM_TRIGGER_POST},

@@ -1098,9 +1098,9 @@ static int aio_read_evt(struct kioctx *ioctx, struct io_event *ent)
 	spin_unlock(&info->ring_lock);
 
 out:
+	kunmap_atomic(ring);
 	dprintk("leaving aio_read_evt: %d  h%lu t%lu\n", ret,
 		 (unsigned long)ring->head, (unsigned long)ring->tail);
-	kunmap_atomic(ring);
 	return ret;
 }
 
@@ -1477,15 +1477,17 @@ out:
 
 static ssize_t aio_setup_single_vector(int type, struct file * file, struct kiocb *kiocb)
 {
-	int bytes;
+	size_t len = kiocb->ki_nbytes;
 
-	bytes = rw_verify_area(type, file, &kiocb->ki_pos, kiocb->ki_left);
-	if (bytes < 0)
-		return bytes;
+	if (len > MAX_RW_COUNT)
+		len = MAX_RW_COUNT;
+
+	if (unlikely(!access_ok(!rw, kiocb->ki_buf, len)))
+                return -EFAULT;
 
 	kiocb->ki_iovec = &kiocb->ki_inline_vec;
 	kiocb->ki_iovec->iov_base = kiocb->ki_buf;
-	kiocb->ki_iovec->iov_len = bytes;
+	kiocb->ki_iovec->iov_len = len;
 	kiocb->ki_nr_segs = 1;
 	kiocb->ki_cur_seg = 0;
 	return 0;

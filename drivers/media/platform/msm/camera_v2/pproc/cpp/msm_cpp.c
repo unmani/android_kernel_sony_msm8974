@@ -1302,7 +1302,8 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 	struct msm_buf_mngr_info buff_mgr_info, dup_buff_mgr_info;
 	int32_t status = 0;
 	int in_fd;
-	int32_t stripe_base = 0;
+
+	uint32_t stripe_base = 0;
 	int i = 0;
 	if (!new_frame) {
 		pr_err("Insufficient memory. return\n");
@@ -1351,6 +1352,12 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 	}
 	if (cpp_frame_msg[new_frame->msg_len - 1] != MSM_CPP_MSG_ID_TRAILER) {
 		pr_err("%s %d Invalid frame message\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+	if (stripe_base == UINT_MAX || new_frame->num_strips >
+		(UINT_MAX - 1 - stripe_base) / 27) {
+		pr_err("Invalid frame message,num_strips %d is large\n",
+			new_frame->num_strips);
 		return -EINVAL;
 	}
 	in_phyaddr = msm_cpp_fetch_buffer_info(cpp_dev,
@@ -1525,28 +1532,25 @@ void msm_cpp_clean_queue(struct cpp_device *cpp_dev)
 long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 			unsigned int cmd, void *arg)
 {
-	struct cpp_device *cpp_dev = NULL;
+	struct cpp_device *cpp_dev = v4l2_get_subdevdata(sd);
 	struct msm_camera_v4l2_ioctl_t *ioctl_ptr = arg;
 	int rc = 0;
 
-	if ((sd == NULL) || (ioctl_ptr == NULL)) {
-		pr_err("Wrong ioctl_ptr %p, sd %p\n", ioctl_ptr, sd);
+	if (ioctl_ptr == NULL) {
+		pr_err("ioctl_ptr is null\n");
 		return -EINVAL;
 	}
+	if (cpp_dev == NULL) {
+		pr_err("cpp_dev is null\n");
+		return -EINVAL;
+	}
+
 	if ((ioctl_ptr->ioctl_ptr == NULL) || (ioctl_ptr->len == 0)) {
 		pr_err("ioctl_ptr OR ioctl_ptr->len is NULL  %pK %d\n",
 			ioctl_ptr, ioctl_ptr->len);
 		return -EINVAL;
 	}
-	if (_IOC_DIR(cmd) == _IOC_NONE) {
-		pr_err("Invalid ioctl/subdev cmd %u\n", cmd);
-		return -EINVAL;
-	}
-	cpp_dev = v4l2_get_subdevdata(sd);
-	if (cpp_dev == NULL) {
-		pr_err("cpp_dev is null\n");
-		return -EINVAL;
-	}
+
 	mutex_lock(&cpp_dev->mutex);
 	CPP_DBG("E cmd: %d\n", cmd);
 	switch (cmd) {

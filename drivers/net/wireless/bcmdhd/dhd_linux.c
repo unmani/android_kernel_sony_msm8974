@@ -3057,9 +3057,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan,
 		/* Process special event packets and then discard them */
 		memset(&event, 0, sizeof(event));
 		if (ntoh16(skb->protocol) == ETHER_TYPE_BRCM) {
-			int ret_event;
-
-			ret_event = dhd_wl_host_event(dhd, &ifidx,
+			dhd_wl_host_event(dhd, &ifidx,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 22)
 			skb_mac_header(skb),
 #else
@@ -3068,16 +3066,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan,
 			len,
 			&event,
 			&data);
-
-			if (ret_event != BCME_OK) {
-#ifdef DHD_USE_STATIC_CTRLBUF
-				PKTFREE_STATIC(dhdp->osh, pktbuf, FALSE);
-#else
-				PKTFREE(dhdp->osh, pktbuf, FALSE);
-#endif
-				continue;
-			}
-
+			
 			wl_event_to_host_order(&event);
 			if (!tout_ctrl)
 				tout_ctrl = DHD_PACKET_TIMEOUT_MS;
@@ -6345,26 +6334,43 @@ done:
 
 
 int
-dhd_iovar(dhd_pub_t *pub, int ifidx, char *name, char *cmd_buf, uint cmd_len, int set)
+dhd_iovar(dhd_pub_t *pub, int ifidx, char *name, char *param_buf,
+	  uint param_len, int set)
 {
-	char buf[strlen(name) + 1 + cmd_len];
-	int len = sizeof(buf);
+	char *buf;
+	int input_len;
 	wl_ioctl_t ioc;
 	int ret;
 
-	len = bcm_mkiovar(name, cmd_buf, cmd_len, buf, len);
+	if (param_len > WLC_IOCTL_MAXLEN)
+		return BCME_BADARG;
+
+	input_len = strlen(name) + 1 + param_len;
+	if (input_len > WLC_IOCTL_MAXLEN)
+		return BCME_BADARG;
+	buf = kzalloc(input_len, GFP_KERNEL);
+	if (!buf) {
+		DHD_ERROR(("%s: mem alloc failed\n", __FUNCTION__));
+		return BCME_NOMEM;
+	}
+	ret = bcm_mkiovar(name, param_buf, param_len, buf, input_len);
+	if (!ret) {
+		ret = BCME_NOMEM;
+		goto exit;
+	}
 
 	memset(&ioc, 0, sizeof(ioc));
 
 	ioc.cmd = set? WLC_SET_VAR : WLC_GET_VAR;
 	ioc.buf = buf;
-	ioc.len = len;
+	ioc.len = input_len;
 	ioc.set = set;
 
 	ret = dhd_wl_ioctl(pub, ifidx, &ioc, ioc.buf, ioc.len);
 	if (!set && ret >= 0)
-		memcpy(cmd_buf, buf, cmd_len);
-
+		memcpy(param_buf, buf, param_len);
+exit:
+	kfree(buf);
 	return ret;
 }
 
@@ -7677,10 +7683,10 @@ dhd_wl_host_event(dhd_info_t *dhd, int *ifidx, void *pktdata, size_t pktlen,
 
 #ifdef SHOW_LOGTRACE
 		bcmerror = wl_host_event(&dhd->pub, ifidx, pktdata, pktlen,
-			event, data, &dhd->event_data);
+				event, data, &dhd->event_data);
 #else
 		bcmerror = wl_host_event(&dhd->pub, ifidx, pktdata, pktlen,
-			event, data, NULL);
+				event, data, NULL);
 #endif /* SHOW_LOGTRACE */
 
 	if (bcmerror != BCME_OK)
@@ -7695,15 +7701,20 @@ dhd_wl_host_event(dhd_info_t *dhd, int *ifidx, void *pktdata, size_t pktlen,
 		 * Wireless ext is on primary interface only
 		 */
 
+	ASSERT(dhd->iflist[*ifidx] != NULL);
+	ASSERT(dhd->iflist[*ifidx]->net != NULL);
+
 		if (dhd->iflist[*ifidx]->net) {
-			wl_iw_event(dhd->iflist[*ifidx]->net, event, *data);
+		wl_iw_event(dhd->iflist[*ifidx]->net, event, *data);
 		}
 	}
 #endif /* defined(WL_WIRELESS_EXT)  */
 
 #ifdef WL_CFG80211
-
-	if (dhd->iflist[*ifidx]->net)
+	ASSERT(dhd->iflist[*ifidx] != NULL);
+	ASSERT(dhd->iflist[*ifidx]->net != NULL);
+	
+if (dhd->iflist[*ifidx]->net)
 		wl_cfg80211_event(dhd->iflist[*ifidx]->net, event, *data);
 #endif /* defined(WL_CFG80211) */
 

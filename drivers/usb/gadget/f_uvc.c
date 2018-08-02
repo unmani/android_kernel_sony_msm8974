@@ -335,6 +335,7 @@ uvc_register_video(struct uvc_device *uvc)
 		return -ENOMEM;
 
 	video->parent = &cdev->gadget->dev;
+	video->minor = -1;
 	video->fops = &uvc_v4l2_fops;
 	video->release = video_device_release;
 	strncpy(video->name, cdev->gadget->name, sizeof(video->name));
@@ -461,15 +462,25 @@ uvc_function_unbind(struct usb_configuration *c, struct usb_function *f)
 
 	INFO(cdev, "uvc_function_unbind\n");
 
-	video_unregister_device(uvc->vdev);
-	uvc->control_ep->driver_data = NULL;
-	uvc->video.ep->driver_data = NULL;
+	if (uvc->vdev) {
+		if (uvc->vdev->minor == -1)
+			video_device_release(uvc->vdev);
+		else
+			video_unregister_device(uvc->vdev);
+		uvc->vdev = NULL;
+	}
 
-	usb_ep_free_request(cdev->gadget->ep0, uvc->control_req);
-	kfree(uvc->control_buf);
+	if (uvc->control_ep)
+		uvc->control_ep->driver_data = NULL;
+	if (uvc->video.ep)
+		uvc->video.ep->driver_data = NULL;
 
-	kfree(f->descriptors);
-	kfree(f->hs_descriptors);
+	if (uvc->control_req) {
+		usb_ep_free_request(cdev->gadget->ep0, uvc->control_req);
+		kfree(uvc->control_buf);
+	}
+
+	usb_free_all_descriptors(f);
 
 	kfree(uvc);
 }
@@ -514,9 +525,12 @@ uvc_function_bind(struct usb_configuration *c, struct usb_function *f)
 	uvc_streaming_intf_alt1.bInterfaceNumber = ret;
 	uvc->streaming_intf = ret;
 
-	/* Copy descriptors. */
-	f->descriptors = uvc_copy_descriptors(uvc, USB_SPEED_FULL);
-	f->hs_descriptors = uvc_copy_descriptors(uvc, USB_SPEED_HIGH);
+	/* Copy descriptors */
+	f->fs_descriptors = uvc_copy_descriptors(uvc, USB_SPEED_FULL);
+	if (gadget_is_dualspeed(cdev->gadget))
+		f->hs_descriptors = uvc_copy_descriptors(uvc, USB_SPEED_HIGH);
+	if (gadget_is_superspeed(c->cdev->gadget))
+		f->ss_descriptors = uvc_copy_descriptors(uvc, USB_SPEED_SUPER);
 
 	/* Preallocate control endpoint request. */
 	uvc->control_req = usb_ep_alloc_request(cdev->gadget->ep0, GFP_KERNEL);
@@ -564,9 +578,7 @@ error:
 		kfree(uvc->control_buf);
 	}
 
-	kfree(f->descriptors);
-	kfree(f->hs_descriptors);
-	kfree(f->ss_descriptors);
+	usb_free_all_descriptors(f);
 	return ret;
 }
 

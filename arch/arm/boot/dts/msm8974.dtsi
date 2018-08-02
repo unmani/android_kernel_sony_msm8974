@@ -136,6 +136,24 @@
 		};
 	};
 
+	firmware: firmware {
+		android {
+			compatible = "android,firmware";
+			fstab {
+				compatible = "android,fstab";
+				system {
+					compatible = "android,system";
+					dev = "/dev/block/platform/msm_sdcc.1/by-name/system";
+					type = "ext4";
+					mnt_flags = "ro,barrier=1,discard";
+					fsmgr_flags = "wait";
+					status = "ok";
+				};
+
+			};
+		};
+	};
+
 	memory {
 		secure_mem: secure_region {
 			linux,contiguous-region;
@@ -1765,6 +1783,13 @@
 		qti,msm-pcm-dsp-id = <1>;
 		qti,msm-pcm-low-latency;
 		qti,latency-level = "regular";
+	};
+
+	qti,msm-pcm-ultra-low-latency {
+		compatible = "qti,msm-pcm-dsp";
+		qti,msm-pcm-dsp-id = <2>;
+		qti,msm-pcm-low-latency;
+		qti,latency-level = "ultra";
 	};
 
 	qcom,msm-pcm-routing {

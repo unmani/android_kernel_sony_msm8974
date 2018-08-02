@@ -9381,7 +9381,6 @@ int wlan_hdd_mon_open(hdd_context_t *pHddCtx)
        return VOS_STATUS_E_FAILURE;
    }
 
-#ifdef CONFIG_ENABLE_LINUX_REG
    status = vos_init_wiphy_from_nv_bin();
    if (!VOS_IS_STATUS_SUCCESS(status))
    {
@@ -9390,7 +9389,6 @@ int wlan_hdd_mon_open(hdd_context_t *pHddCtx)
                "%s: vos_init_wiphy failed", __func__);
        goto err_vos_nv_close;
    }
-#endif
 
    status = vos_open( &pVosContext, pHddCtx->parent_dev);
    if ( !VOS_IS_STATUS_SUCCESS( status ))
